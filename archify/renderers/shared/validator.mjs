@@ -35,6 +35,36 @@ function formatErrors(errors, data) {
   }).join('\n');
 }
 
+// Repair hints for one ajv error. A keyword emits a hint only when the ajv param
+// it needs is present, so a missing param yields [] rather than "undefined" text.
+export function supportedFixesFor(error, annotated) {
+  return {
+    additionalProperties: [`remove unsupported property ${JSON.stringify(error.params?.additionalProperty)}`],
+    required: [`add required property ${JSON.stringify(error.params?.missingProperty)}`],
+    type: [`use ${JSON.stringify(error.params?.type)} at ${annotated.path}`],
+    enum: [`choose one of the allowed values`],
+    pattern: [`match the required pattern ${JSON.stringify(error.params?.pattern)}`],
+    minimum: [`use a value ${error.params?.comparison || '>='} ${error.params?.limit}`],
+    maximum: [`use a value ${error.params?.comparison || '<='} ${error.params?.limit}`],
+    minItems: [`provide at least ${error.params?.limit} item(s)`],
+    maxItems: [`provide at most ${error.params?.limit} item(s)`],
+    minLength: [`provide at least ${error.params?.limit} character(s)`],
+    maxLength: [`provide at most ${error.params?.limit} character(s)`],
+    const: 'allowedValue' in (error.params ?? {})
+      ? [`use ${JSON.stringify(error.params.allowedValue)} at ${annotated.path}`]
+      : [],
+    exclusiveMinimum: 'limit' in (error.params ?? {})
+      ? [`use a value ${error.params.comparison || '>'} ${error.params.limit}`]
+      : [],
+    exclusiveMaximum: 'limit' in (error.params ?? {})
+      ? [`use a value ${error.params.comparison || '<'} ${error.params.limit}`]
+      : [],
+    multipleOf: 'multipleOf' in (error.params ?? {})
+      ? [`use a multiple of ${error.params.multipleOf}`]
+      : [],
+  }[error.keyword] || [];
+}
+
 export function validateSchema(diagramType, data) {
   const validate = validators[diagramType];
   if (!validate) {
@@ -53,19 +83,7 @@ export function validateSchema(diagramType, data) {
         expected: error.schema,
         ...error.params,
       };
-      const supportedFixes = {
-        additionalProperties: [`remove unsupported property ${JSON.stringify(error.params?.additionalProperty)}`],
-        required: [`add required property ${JSON.stringify(error.params?.missingProperty)}`],
-        type: [`use ${JSON.stringify(error.params?.type)} at ${annotated.path}`],
-        enum: [`choose one of the allowed values`],
-        pattern: [`match the required pattern ${JSON.stringify(error.params?.pattern)}`],
-        minimum: [`use a value ${error.params?.comparison || '>='} ${error.params?.limit}`],
-        maximum: [`use a value ${error.params?.comparison || '<='} ${error.params?.limit}`],
-        minItems: [`provide at least ${error.params?.limit} item(s)`],
-        maxItems: [`provide at most ${error.params?.limit} item(s)`],
-        minLength: [`provide at least ${error.params?.limit} character(s)`],
-        maxLength: [`provide at most ${error.params?.limit} character(s)`],
-      }[error.keyword] || [];
+      const supportedFixes = supportedFixesFor(error, annotated);
       return {
         code: `schema/${error.keyword}`,
         severity: 'error',
