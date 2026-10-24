@@ -43,6 +43,19 @@ function requireSuccess(label, result) {
   assert.equal(result.status, 0, commandFailure(label, result));
 }
 
+function githubRepositoryUrlFromOrigin() {
+  const result = spawnSync('git', ['-C', repoRoot, 'remote', 'get-url', 'origin'], {
+    encoding: 'utf8',
+  });
+  requireSuccess('repository origin discovery', result);
+  const origin = result.stdout.trim()
+    .replace(/^git@github\.com:/iu, 'https://github.com/')
+    .replace(/^ssh:\/\/git@github\.com\//iu, 'https://github.com/')
+    .replace(/\.git$/iu, '');
+  assert.match(origin, /^https:\/\/github\.com\/[^/]+\/[^/]+$/iu, `unsupported GitHub origin: ${result.stdout.trim()}`);
+  return origin;
+}
+
 function requireControlledDirectory(name) {
   const value = process.env[name];
   assert.ok(value, `${name} is required on the controlled Windows path lane`);
@@ -256,7 +269,7 @@ async function runControlledWindowsPathE2E() {
     requireSuccess('repository revision discovery', revision);
     const evidenceDiagram = JSON.parse(fs.readFileSync(architectureInput, 'utf8'));
     evidenceDiagram.meta.repository = {
-      url: 'https://github.com/tt-a1i/archify',
+      url: githubRepositoryUrlFromOrigin(),
       revision: revision.stdout.trim(),
     };
     evidenceDiagram.components[0].sources = [{

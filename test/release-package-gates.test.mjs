@@ -185,14 +185,17 @@ test('CI binds a public notifier manifest to the Release asset, tagged archive, 
   const workflow = fs.readFileSync(path.join(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
   const job = workflowJob(workflow, 'published-update-manifest');
   assert.match(job, /validateStableUpdateManifest/);
+  assert.match(job, /UPDATE_RELEASE_REPOSITORY: tt-a1i\/archify/);
+  assert.match(job, /repos\/\$\{UPDATE_RELEASE_REPOSITORY\}\/releases\/latest/);
   assert.match(job, /releases\/latest/);
   assert.match(job, /latest_stable_tag" != "v\$\{manifest_version\}"/);
-  assert.match(job, /releases\/tags\/v\$\{manifest_version\}/);
+  assert.match(job, /repos\/\$\{UPDATE_RELEASE_REPOSITORY\}\/releases\/tags\/v\$\{manifest_version\}/);
   assert.match(job, /select\(\.draft == false and \.prerelease == false\)/);
   assert.match(job, /select\(\.name == "archify\.zip"\)/);
-  assert.match(job, /releases\/assets\/\$\{release_asset_id\}/);
+  assert.match(job, /repos\/\$\{UPDATE_RELEASE_REPOSITORY\}\/releases\/assets\/\$\{release_asset_id\}/);
   assert.match(job, /Accept: application\/octet-stream/);
-  assert.match(job, /refs\/tags\/v\$\{manifest_version\}:refs\/tags\/v\$\{manifest_version\}/);
+  assert.match(job, /https:\/\/github\.com\/\$\{UPDATE_RELEASE_REPOSITORY\}\.git/);
+  assert.match(job, /\+refs\/tags\/v\$\{manifest_version\}:refs\/tags\/v\$\{manifest_version\}/);
   assert.match(job, /git show "v\$\{manifest_version\}:archify\.zip" > "\$tagged_archive"/);
   assert.match(job, /cmp -s "\$published_archive" "\$tagged_archive"/);
   assert.match(job, /check-stable-update-manifest\.mjs/);
@@ -285,6 +288,10 @@ test('GitHub Pages deploys the verified website artifact only after every reposi
   assert.match(windows, /node-version: \[22, 24\]/);
   assert.match(windows, /Verify maintained Windows path contracts/);
   assert.match(windows, /ARCHIFY_REQUIRE_WINDOWS_REAL_PATHS: '1'/);
+  const windowsPathRunner = fs.readFileSync(path.join(repoRoot, 'scripts', 'run-windows-path-tests.mjs'), 'utf8');
+  assert.match(windowsPathRunner, /remote', 'get-url', 'origin'/);
+  assert.match(windowsPathRunner, /url: githubRepositoryUrlFromOrigin\(\)/);
+  assert.doesNotMatch(windowsPathRunner, /url: 'https:\/\/github\.com\/tt-a1i\/archify'/);
 });
 
 test('release tags with a SemVer prerelease are marked prerelease and never become latest', () => {

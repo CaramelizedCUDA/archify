@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { validateSchema } from '../archify/renderers/shared/validator.mjs';
+import { stageCleanSkill } from '../scripts/stage-clean-skill.mjs';
 import {
   skillRoot, ES_TRANSLATIONS, KO_TRANSLATIONS, FR_PARTIAL_TRANSLATIONS,
   MANIFEST, EXAMPLES, example, authoredExample, localeDocument, createLocaleFixture,
@@ -515,9 +516,9 @@ test('enrolling a catalog is a data-only change and works from an unrelated work
   // Copy the runtime (no tests, no node_modules) outside the checkout, enroll
   // one more catalog through data alone, and render from an unrelated cwd.
   const packageRoot = path.join(tmp, 'package-copy', 'archify');
-  fs.cpSync(skillRoot, packageRoot, {
-    recursive: true,
-    filter: (source) => !['node_modules', 'test'].includes(path.basename(source)) || path.dirname(source) !== skillRoot,
+  stageCleanSkill({
+    repoRoot: path.resolve(skillRoot, '..'),
+    destination: packageRoot,
   });
   const french = JSON.parse(fs.readFileSync(path.join(skillRoot, 'examples/locales/fr.json'), 'utf8'));
   fs.writeFileSync(path.join(packageRoot, 'locales/fr.json'), JSON.stringify(french));
